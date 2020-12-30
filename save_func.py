@@ -1,55 +1,9 @@
 #!/usr/bin/env python3
-# PYTHON_PREAMBLE_START_STANDARD:{{{
-
-# Christopher David Cotton (c)
-# http://www.cdcotton.com
-
-# modules needed for preamble
-import importlib
 import os
 from pathlib import Path
 import sys
 
-# Get full real filename
-__fullrealfile__ = os.path.abspath(__file__)
-
-# Function to get git directory containing this file
-def getprojectdir(filename):
-    curlevel = filename
-    while curlevel is not '/':
-        curlevel = os.path.dirname(curlevel)
-        if os.path.exists(curlevel + '/.git/'):
-            return(curlevel + '/')
-    return(None)
-
-# Directory of project
-__projectdir__ = Path(getprojectdir(__fullrealfile__))
-
-# Function to call functions from files by their absolute path.
-# Imports modules if they've not already been imported
-# First argument is filename, second is function name, third is dictionary containing loaded modules.
-modulesdict = {}
-def importattr(modulefilename, func, modulesdict = modulesdict):
-    # get modulefilename as string to prevent problems in <= python3.5 with pathlib -> os
-    modulefilename = str(modulefilename)
-    # if function in this file
-    if modulefilename == __fullrealfile__:
-        return(eval(func))
-    else:
-        # add file to moduledict if not there already
-        if modulefilename not in modulesdict:
-            # check filename exists
-            if not os.path.isfile(modulefilename):
-                raise Exception('Module not exists: ' + modulefilename + '. Function: ' + func + '. Filename called from: ' + __fullrealfile__ + '.')
-            # add directory to path
-            sys.path.append(os.path.dirname(modulefilename))
-            # actually add module to moduledict
-            modulesdict[modulefilename] = importlib.import_module(''.join(os.path.basename(modulefilename).split('.')[: -1]))
-
-        # get the actual function from the file and return it
-        return(getattr(modulesdict[modulefilename], func))
-
-# PYTHON_PREAMBLE_END:}}}
+__projectdir__ = Path(os.path.dirname(os.path.realpath(__file__)) + '/')
 
 import copy
 import datetime
@@ -58,7 +12,9 @@ import shutil
 
 # Preliminary Functions:{{{1
 # import issubpath:{{{1
-issubpath = importattr(__projectdir__ / Path('submodules/python-general-func/filename_func.py'), 'issubpath')
+sys.path.append(str(__projectdir__ / Path('submodules/python-general-func/')))
+from filename_func import issubpath
+issubpath = issubpath
 
 def convertabsolutetorelative(filelist, commonpath):
     relativefilelist = []
@@ -229,7 +185,9 @@ def savefilelist(sourcefilelist, sourcefolder, destfolder, sourcedirlist = None,
         if os.path.isfile(destfilename):
             # replace if changes
             # function checks whether checksums are different
-            if importattr(__projectdir__ / Path('submodules/python-general-func/filename_func.py'), 'twofilesaresame')(sourcefilename, destfilename) is False:
+            sys.path.append(str(__projectdir__ / Path('submodules/python-general-func/')))
+            from filename_func import twofilesaresame
+            if twofilesaresame(sourcefilename, destfilename) is False:
                 if deletedfolder is not None:
                     movetodeletedfolder(filename)
                 else:
@@ -257,7 +215,7 @@ def savefilelist(sourcefilelist, sourcefolder, destfolder, sourcedirlist = None,
 
         # get which files I should delete
         # delete files
-        deletefiles = importattr(__projectdir__ / Path('save_func.py'), 'getorderedstringsubset')(sorted(potentialdeletefilelist), sorted(sourcefilelist))[1]
+        deletefiles = getorderedstringsubset(sorted(potentialdeletefilelist), sorted(sourcefilelist))[1]
         for oldfile in deletefiles:
             if deletedfolder is not None:
                 movetodeletedfolder(oldfile)
@@ -267,7 +225,7 @@ def savefilelist(sourcefilelist, sourcefolder, destfolder, sourcedirlist = None,
         # advantage of specifying sourcedirlist is that I don't delete empty directories in sourcedirlist which don't contain any files
         # allows for perfect backup
         if sourcedirlist is not None:
-            deletedirs = importattr(__projectdir__ / Path('save_func.py'), 'getorderedstringsubset')(sorted(potentialdeletedirlist), sorted(sourcedirlist))[1]
+            deletedirs = getorderedstringsubset(sorted(potentialdeletedirlist), sorted(sourcedirlist))[1]
             # go in reverse order so that I do /home/user/1 before /home/user otherwise:
             # 1. /home/user will not be empty when I try to delete it
             # 2. /home/user/1 will already be deleted when I try to delete it
@@ -339,7 +297,7 @@ def savefolder(sourcefolder, destfolder, deleteold = True, ignorepaths = None, d
     sourcefilelist = [filename for filename in sourcefilelist if True not in set([issubpath(filename, ignorepath) for ignorepath in ignorepaths])]
     sourcedirlist = [dirname for dirname in sourcedirlist if True not in set([issubpath(dirname, ignorepath) for ignorepath in ignorepaths])]
 
-    importattr(__projectdir__ / Path('save_func.py'), 'savefilelist')(sourcefilelist, sourcefolder, destfolder, sourcedirlist = sourcedirlist, deleteold = deleteold, donotdeletepaths = ignorepaths, deletedfolder = deletedfolder, donotmovetodeletedfolderlist = donotmovetodeletedfolderlist)
+    savefilelist(sourcefilelist, sourcefolder, destfolder, sourcedirlist = sourcedirlist, deleteold = deleteold, donotdeletepaths = ignorepaths, deletedfolder = deletedfolder, donotmovetodeletedfolderlist = donotmovetodeletedfolderlist)
 
 
 def savefolder_test():
@@ -374,4 +332,4 @@ def savefolder_ap():
     args=parser.parse_args()
     #End argparse:}}}
 
-    importattr(__projectdir__ / Path('save_func.py'), 'savefolder')(args.sourcefolder, args.destfolder, deletedfolder = args.deletedfolder)
+    savefolder(args.sourcefolder, args.destfolder, deletedfolder = args.deletedfolder)
